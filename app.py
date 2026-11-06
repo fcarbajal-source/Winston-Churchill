@@ -3,98 +3,98 @@ from google import genai
 from google.genai import types
 
 # ----------------------------------------------------------------------
-# Page Configuration
+# 1. Page Configuration
 # ----------------------------------------------------------------------
 st.set_page_config(
-    page_title="Sir Winston Churchill — History Assistant",
-    page_icon="🇬🇧",
+    page_title="Sir Winston Churchill — High School History Chatbot",
+    page_icon="🎩",
     layout="centered",
 )
 
-st.title("🇬🇧 Ask Sir Winston Churchill")
+st.title("🎩 Speak with Sir Winston Churchill")
 st.caption(
-    "10th-Grade World History Chatbot grounded in primary documents, letters, "
-    "speeches, and legal records."
+    "10th-Grade World History dialogue grounded in primary archives, "
+    "Hansard debates, letters, and legal records."
 )
 
 # ----------------------------------------------------------------------
-# API Key Verification
+# 2. API Key Authentication (Streamlit Secrets)
 # ----------------------------------------------------------------------
 if "GEMINI_API_KEY" not in st.secrets:
     st.error(
-        "Missing GEMINI_API_KEY! Please configure it in your `.streamlit/secrets.toml` "
-        "file locally, or under 'App settings > Secrets' on Streamlit Cloud."
+        "Missing `GEMINI_API_KEY`! Please configure it in `.streamlit/secrets.toml` locally, "
+        "or in your Streamlit Cloud Dashboard under App Settings > Secrets."
     )
     st.stop()
 
-# Initialize Gemini Client
+# Initialize Google GenAI client
 client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
 
 # ----------------------------------------------------------------------
-# System Prompt
+# 3. System Prompt & Historical Persona
 # ----------------------------------------------------------------------
 SYSTEM_INSTRUCTION = """
 You are Sir Winston Churchill (1874–1965), former British Prime Minister, First Lord of the Admiralty, and Home Secretary.
-Speak in the first person ("I", "my") with my characteristic grit, eloquence, and cadence.
+Respond in the first person ("I", "my") with Churchill's resolute, articulate, and determined demeanor.
 
-Target Audience & Reading Level:
-- California 10th-grade high school World History students (approx. 15–16 years old).
-- Explain historical concepts clearly and accessibly without patronizing or using overly archaic jargon.
+Audience & Reading Level:
+- California 10th-grade high school World History students (ages 15–16).
+- Use clear, engaging language suitable for a high school reading level. Explain context simply without overly dense Victorian archaisms.
 
-Primary & Secondary Knowledge Base:
-Draw strictly upon verified archival and documentary materials:
+Historical Document Foundation:
+Draw your answers directly from primary and secondary evidence, specifically:
 1. University of Cambridge Digital Archives (Churchill Archives Centre papers: CHAR and CHUR collections).
 2. The Churchill Archive (accessible via Bloomsbury, Swem Library at William & Mary, and Hunter College Libraries).
-3. International Churchill Society (ICS) collections, speeches, and essays.
+3. International Churchill Society (ICS) collections, verified speeches, and essays.
 4. The London School of Economics (LSE) Churchill Archive collections.
-5. Official government documents: Cabinet papers, Admiralty directives, and Hansard Parliamentary Debates.
-6. Personal correspondence: Letters to and from family (Clementine), world leaders (Franklin D. Roosevelt, Stalin), and colleagues.
-7. Legal cases and official inquiries: Your legal actions and court rulings (e.g., the 1923 criminal libel trial *R v. Lord Alfred Douglas*, libel actions such as *Churchill v. Blackwood*), the Dardanelles Commission of Inquiry, and your executive legal responsibilities as Home Secretary overseeing the British justice system. (Note: Clarify historically that while you directed the justice system as Home Secretary and litigated in court, you were not a practicing barrister/lawyer).
+5. Official government documents: Cabinet minutes, Admiralty telegrams, and Hansard Parliamentary Debates.
+6. Personal correspondence: Letters to/from Clementine Churchill, Franklin D. Roosevelt, King George VI, and Joseph Stalin.
+7. Legal cases and official inquiries: Trials and court proceedings involving you (e.g., the 1923 criminal libel trial *R v. Lord Alfred Douglas*, libel suits like *Churchill v. Blackwood*), the Dardanelles Commission of Inquiry, and your executive decisions as Home Secretary managing the legal system. (Note: Accurately reflect that while you governed the British justice system as Home Secretary and took part in landmark court cases, you were not an admitted barrister/lawyer).
 
 Strict Output Constraints:
-1. Length: Every response MUST be strictly between 15 and 120 words.
-2. Citation: You MUST conclude every response with a concise citation identifying the source material (e.g., `[Source: Churchill Archives Centre, Cambridge, CHAR 2/...]` or `[Source: Hansard, House of Commons, 1940]` or `[Source: The Churchill Archive via Swem Library / ICS]`). The citation is counted within the word limit.
+1. Length: Every answer MUST be strictly between 15 and 120 words.
+2. Citation: At the very end of every reply, append a concise citation acknowledging the specific archive or record base (e.g., `[Source: Churchill Archives Centre, Cambridge, CHAR 2/...]` or `[Source: Hansard, House of Commons, 1940]` or `[Source: Churchill Archive, Swem Library / ICS]`). The citation counts toward the total word limit.
 """
 
 # ----------------------------------------------------------------------
-# Session Memory (Strictly keep the previous six questions)
+# 4. Conversation History Management (Last 6 Questions Only)
 # ----------------------------------------------------------------------
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display conversation history
+# Display previous chat messages
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
 # ----------------------------------------------------------------------
-# Chat Interaction
+# 5. User Input & Model Generation
 # ----------------------------------------------------------------------
-user_query = st.chat_input("Ask a question about World War II, my speeches, letters, or legal trials...")
+user_query = st.chat_input("Ask Mr. Churchill about his speeches, trials, war strategy, or letters...")
 
 if user_query:
-    # 1. Add user query to local state
+    # 1. Append the new user prompt
     st.session_state.messages.append({"role": "user", "content": user_query})
     with st.chat_message("user"):
         st.markdown(user_query)
 
-    # 2. Memory limit: Retain only the last 6 questions (up to 12 turns: 6 user + 6 assistant)
-    trimmed_history = st.session_state.messages[-12:]
+    # 2. Strict Memory Constraint: Remember only the previous 6 questions (up to 12 turns)
+    recent_messages = st.session_state.messages[-12:]
 
     # 3. Format history for Google GenAI SDK
     formatted_contents = []
-    for m in trimmed_history:
+    for m in recent_messages:
         role = "user" if m["role"] == "user" else "model"
         formatted_contents.append(
             types.Content(role=role, parts=[types.Part.from_text(text=m["content"])])
         )
 
-    # 4. Generate response using Gemini 3.5-lite with temperature 0.3
+    # 4. Generate response using gemini-3.5-flash-lite at temperature 0.3
     with st.chat_message("assistant"):
-        with st.spinner("Consulting the archives..."):
+        with st.spinner("Mr. Churchill is reviewing his papers..."):
             try:
                 response = client.models.generate_content(
-                    model="gemini-3.5-lite",
+                    model="gemini-3.5-flash-lite",
                     contents=formatted_contents,
                     config=types.GenerateContentConfig(
                         system_instruction=SYSTEM_INSTRUCTION,
@@ -102,10 +102,11 @@ if user_query:
                         max_output_tokens=220,
                     ),
                 )
+                
                 churchill_reply = response.text.strip()
                 st.markdown(churchill_reply)
 
-                # Store assistant response
+                # Store assistant response in history
                 st.session_state.messages.append(
                     {"role": "assistant", "content": churchill_reply}
                 )
